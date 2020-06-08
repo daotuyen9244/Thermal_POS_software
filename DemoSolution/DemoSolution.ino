@@ -1,9 +1,8 @@
-#include <SPI.h>
-#include <Ethernet2.h>
+
 
 // comment out next line to write to SD from FTP server
-//#define FTPWRITE
-//#define USE_PRINTER // USE USB printer driver
+//#define USE_FTP
+#define USE_PRINTER // USE USB printer driver
 #define USE_DEBUG   // Use debug modd by serial
 #define DEMO        // Use demo mode
 //#define DELETE_FILE   // Remove file into FTP server
@@ -12,6 +11,10 @@
 #define WIDTH 192
 #define HEIGHT 128
 #define Pin_rst 5
+#ifdef USE_FTP
+#include <SPI.h>
+#include <Ethernet2.h>
+#endif
 #ifdef USE_PRINTER
 #include "M0USBPrinter.h"
 #include "M0_POS_Printer.h"
@@ -35,6 +38,7 @@ PrinterOper AsyncOper;
 USBPrinter uprinter(&myusb, &AsyncOper);
 ESC_POS_Printer printer(&uprinter);
 #endif
+#ifdef USE_FTP
 // this must be unique
 byte mac[] = {0x90, 0xA2, 0xDA, 0x00, 0x59, 0x67};
 IPAddress ip(192, 168, 12, 110);
@@ -50,6 +54,7 @@ EthernetClient dclient;
 
 const String ftp_account = "u260446266";
 const String ftp_passwords = "Quangthanh@9244";
+#endif
 //const String ftp_account = "admin";
 //const String ftp_passwords = "admin";
 //Key variable
@@ -933,6 +938,7 @@ void setup()
 {
   // put your setup code here, to run once:
   Serial.begin(115200);
+#ifdef USE_FTP
   pinMode(Pin_rst, OUTPUT);
   digitalWrite(Pin_rst, LOW);
   delay(1000);
@@ -948,6 +954,7 @@ void setup()
   Serial.println("Ethernet connected");
   Serial.println("IP address: ");
   Serial.println(Ethernet.localIP());
+#endif
 #endif
 //
   width = WIDTH;
@@ -1010,6 +1017,7 @@ void loop()
   // put your main code here, to run repeatedly:
   byte inChar;
   inChar = Serial.read();
+  #ifdef USE_FTP
   //if (inChar == 'f')
   {
     if (ReadFromFTP())
@@ -1017,12 +1025,13 @@ void loop()
     else
       Serial.println(F("FTP FAIL"));
   }
+  #endif
   if (inChar == 'p')
   {
     inChar =0;
     downloadStatus = true;
   }
-/*
+
   #ifdef USE_PRINTER
   myusb.Task();
   //Download data from FTP Server Done --> Printer
@@ -1047,8 +1056,9 @@ void loop()
     downloadStatus = false;
   }
 #endif
-*/
+
 }
+#ifdef USE_FTP
 byte ReadFromFTP()
 {
 if (client.connect(server, 21))
@@ -1212,6 +1222,69 @@ void efail()
   client.stop();
   Serial.println(F("Command disconnected"));
 }
+
+
+void processGetData()
+{
+  downloadStatus = false;
+
+#ifdef USE_DEBUG
+  Serial.println(F("Reading"));
+#endif
+  counterdataProcess = 62;
+  while (dclient.connected())
+  {
+    while (dclient.available())
+    {
+      char c = dclient.read();
+      counterOfFile++;
+      //if (counterOfFile > 54)
+      if (counterOfFile > 62) // 54 byte header + 8 byte color
+      {
+        dataIn[counterForPC++] = c;
+        if (counterForPC > 23) // counter 8 byte
+        {
+          if (counterRef < (WIDTH * (HEIGHT / 8)))
+          {
+            dataReturn = DataConvert();
+#ifdef DEMO
+#else
+            logo_bmp[counterdataProcess] = dataReturn;
+#endif
+            counterdataProcess++;
+          }
+          else
+          {
+          }
+
+          counterRef++;
+          counterForPC = 0;
+        }
+        if (counterOfFile % 2000 == 0)
+        {
+#ifdef USE_DEBUG
+          Serial.print(".");
+#endif
+        }
+      }
+    }
+  }
+  downloadStatus = true;
+#ifdef USE_DEBUG
+  Serial.println("done.");
+  Serial.print("counterOfFile: ");
+  Serial.println(counterOfFile);
+  Serial.print("counterRef: ");
+  Serial.println(counterRef);
+#endif
+  dclient.stop();
+#ifdef USE_DEBUG
+  Serial.println();
+  Serial.println(F("Data disconnected"));
+#endif
+  //client.println();
+}
+#endif
 unsigned char DataConvert()
 {
   byte R, G, B;
@@ -1281,66 +1354,6 @@ unsigned char DataConvert()
   gray = (unsigned char)(gray >> 7);
   dt = dt | gray;
   return dt;
-}
-void processGetData()
-{
-  downloadStatus = false;
-
-#ifdef USE_DEBUG
-  Serial.println(F("Reading"));
-#endif
-  counterdataProcess = 62;
-  while (dclient.connected())
-  {
-    while (dclient.available())
-    {
-      char c = dclient.read();
-      counterOfFile++;
-      //if (counterOfFile > 54)
-      if (counterOfFile > 62) // 54 byte header + 8 byte color
-      {
-        dataIn[counterForPC++] = c;
-        if (counterForPC > 23) // counter 8 byte
-        {
-          if (counterRef < (WIDTH * (HEIGHT / 8)))
-          {
-            dataReturn = DataConvert();
-#ifdef DEMO
-#else
-            logo_bmp[counterdataProcess] = dataReturn;
-#endif
-            counterdataProcess++;
-          }
-          else
-          {
-          }
-
-          counterRef++;
-          counterForPC = 0;
-        }
-        if (counterOfFile % 2000 == 0)
-        {
-#ifdef USE_DEBUG
-          Serial.print(".");
-#endif
-        }
-      }
-    }
-  }
-  downloadStatus = true;
-#ifdef USE_DEBUG
-  Serial.println("done.");
-  Serial.print("counterOfFile: ");
-  Serial.println(counterOfFile);
-  Serial.print("counterRef: ");
-  Serial.println(counterRef);
-#endif
-  dclient.stop();
-#ifdef USE_DEBUG
-  Serial.println();
-  Serial.println(F("Data disconnected"));
-#endif
-  //client.println();
 }
 int tpLoadBMP(uint8_t *pBMP, int bInvert, int iXOffset, int iYOffset)
 {
