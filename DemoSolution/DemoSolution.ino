@@ -1,7 +1,7 @@
 
 
 // comment out next line to write to SD from FTP server
-//#define USE_FTP
+#define USE_FTP
 #define USE_PRINTER // USE USB printer driver
 #define USE_DEBUG   // Use debug modd by serial
 #define DEMO        // Use demo mode
@@ -41,19 +41,19 @@ ESC_POS_Printer printer(&uprinter);
 #ifdef USE_FTP
 // this must be unique
 byte mac[] = {0x90, 0xA2, 0xDA, 0x00, 0x59, 0x67};
-IPAddress ip(192, 168, 12, 110);
-IPAddress gateway(192, 168, 12, 1);
+IPAddress ip(192, 168, 0, 10);
+IPAddress gateway(192, 168, 0, 1);
 IPAddress subnet(255, 255, 255, 0);
 
 // change to your server
-//IPAddress server(192, 168, 0, 12);
-IPAddress server(194, 5, 156, 77);
+IPAddress server(192, 168, 0, 12);
+//IPAddress server(194, 5, 156, 77);
 //IPAddress server(192, 168, 12, 103);
 EthernetClient client;
 EthernetClient dclient;
 
-const String ftp_account = "u260446266";
-const String ftp_passwords = "Quangthanh@9244";
+const String ftp_account = "indruino";
+const String ftp_passwords = "2019";
 #endif
 //const String ftp_account = "admin";
 //const String ftp_passwords = "admin";
