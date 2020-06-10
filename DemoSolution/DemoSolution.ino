@@ -1,7 +1,7 @@
 
 
 // comment out next line to write to SD from FTP server
-#define USE_FTP
+//#define USE_FTP
 #define USE_PRINTER // USE USB printer driver
 #define USE_DEBUG   // Use debug modd by serial
 #define DEMO        // Use demo mode
