@@ -5,7 +5,7 @@ extern "C" char* sbrk(int incr);
 extern char *__brkval;
 #endif  // __arm__
 
-#define USE_DEMO
+//#define USE_DEMO
 #define USE_DEBUG
 #define USE_PRINTER // USE USB printer driver
 #define USE_FLASH
@@ -13,8 +13,8 @@ extern char *__brkval;
 #define IMAGE_PROCESS
 #define USE_ETHERNET
 
-#define WIDTH 256
-#define HEIGHT 96
+#define WIDTH 384
+#define HEIGHT 40
 #define byte_per_page 528
 #define CPRINT 1
 
@@ -553,7 +553,7 @@ EthernetClient dclient;
 
 const String ftp_account = "u260446266";
 const String ftp_passwords = "Quangthanh@9244";*/
-const String fileName = "test.bmp";
+ String fileName = "";
 //Key variable
 char outBuf[128];
 char outCount;
@@ -702,6 +702,7 @@ void saveDataFormFTP()
     if (counterFor1bffer >= (calculateSize24bbp - ((calculatePage24bbp - 1) * byte_per_page)))
     {
       storageDataToFlash(counterForPage++, location1);
+
     }
   }
 }
@@ -729,15 +730,15 @@ void ReadDataFromFlash(byte mode)
       if (counterForByte < calculateSize)
       {
         _data = dataflash.Stransfer(0xff);
-        sourceBuf[counterForByte]=_data;
+        /*sourceBuf[counterForByte]=_data;
         Serial.print(F("0x"));
         Serial.print(_data, HEX);
-        Serial.print(F(","));
+        Serial.print(F(","));*/
         counterForByte++;
       }
-      if (counterForByte % 16 == 0)
+      if (counterForByte % 200 == 0)
       {
-        Serial.print(F("\n"));
+        Serial.print(F("."));
       }
     }
   }
@@ -748,7 +749,7 @@ void ReadDataFromFlash(byte mode)
 #ifdef USE_PRINTER
 void printPicture()
 {
-  myusb.Task();
+  
   //Download data from FTP Server Done --> Printer
   if (downloadStatus)
   {
@@ -976,7 +977,7 @@ void makingMiniPicture(unsigned char *buff, int iWidth, int iHeight)
     0xFF, 0x00
   };*/
   //256x96
-  byte headerData[62]=
+  /*byte headerData[62]=
   {
     0x42,0x4D,0xCC,0xCC,0x3E,0x60,0x00,0x00,0x00,0x00,0x3E,0x00,
 0x00,0x00,0x28,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x60,0x00,
@@ -984,7 +985,15 @@ void makingMiniPicture(unsigned char *buff, int iWidth, int iHeight)
 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02,0x00,
 0x00,0x00,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xFF,0xFF,
 0xFF,0x00
-  };
+  };*/
+  //384x40
+  byte headerData[62]={
+  0x42,0x4D,0xCC,0xCC,0x3E,0x3C,0x00,0x00,0x00,0x00,0x3E,0x00,
+0x00,0x00,0x28,0x00,0x00,0x00,0x80,0x01,0x00,0x00,0x28,0x00,
+0x00,0x00,0x01,0x00,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x3C,
+0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x02,0x00,
+0x00,0x00,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xFF,0xFF,
+0xFF,0x00};
   for (byte i = 0; i < 62; i++)
   {
     sourceBuf[i]=headerData[i];
@@ -997,11 +1006,11 @@ void converTo1BBp()
   int _counter = 0;
   counterForByte = 0;
   counterForPage = 0;
+  counterRef=0;
   byte comp = 0;
 #endif
   counterdataProcess = 62;
   makingMiniPicture(sourceBuf, WIDTH, HEIGHT); // making header file for 1bbp bitmap
-#ifdef USE_FLASH
   for (byte i = 0; i < calculatePage24bbp; i++)
   {
     //dataflash.pageRead(i, 0);
@@ -1031,53 +1040,8 @@ void converTo1BBp()
       }
     }
   }
-  #ifdef IMAGE_PROCESS
-  Serial.println(F("done."));
-  Serial.print(F("counterOfFile: "));
-  Serial.println(counterOfFile);
-  Serial.print(F("counterdataProcess: "));
-  Serial.println(counterdataProcess);
-  comp=0;
-   _counter =0;
-  for(int i=0;i<counterdataProcess;i++)
-  {
-    if(sourceBuf[i]<16)
-    {
-      Serial.print(F("0x0"));
-    }
-    else
-    {
-      Serial.print(F("0x"));
-    }
-    
-    
-    Serial.print(sourceBuf[i],HEX);
-    Serial.print(F(","));
-    #ifdef USE_DEMO
-    if(sourceBuf[i]!= logo_bmp[i])
-    {
-
-      comp =1;
-      Serial.print(F("\n>>>>>>>>>>>Diff: "));
-      Serial.print(i);
-      Serial.print("\t");
-      Serial.print(sourceBuf[i]);
-      Serial.print("\t");
-      Serial.println(logo_bmp[i]);
-
-    }
-    #endif
-    _counter++;
-    if(_counter > 11 )
-    {
-      Serial.println();
-      _counter=0;
-    }
-  }
-#endif
-  Serial.print(F("comp: "));
-  Serial.println(comp);
-#endif
+   counterOfFile =0;
+  counterdataProcess=0;
 }
 #endif
 #ifdef USE_ETHERNET
@@ -1101,6 +1065,7 @@ byte doFTP(String fileName)
 {
   if (client.connect(server, 21))
   {
+    //client.setTimeout(15000);
     Serial.println(F("Command connected"));
   }
   else
@@ -1164,6 +1129,7 @@ byte doFTP(String fileName)
     return 0;
   }
   processGetData();
+  dclient.println();
   dclient.stop();
   Serial.println(F("Data disconnected"));
   if (!eRcv())
@@ -1218,17 +1184,14 @@ void efail()
   client.stop();
   Serial.println(F("Command disconnected"));
 }
+/*
 void processGetData()
 {
 #ifdef USE_PRINTER
   downloadStatus = false;
 #endif
   Serial.println(F("Reading"));
-/*
-#ifdef IMAGE_PROCESS
-  counterdataProcess = 62;
-#endif
-*/
+
 #ifdef USE_FLASH
   counterForPage = 0;
   setBufferWriteToFlash();
@@ -1240,32 +1203,14 @@ void processGetData()
       //char c = dclient.read();
       counterOfFile++;
 #ifdef USE_FLASH
+      counterForPage = 0; // count: 0 ->calculatePage
+      counterForByte = 0; // count: 0 ->528
+      counterFor1bffer = 0;
       saveDataFormFTP();
+      counterForPage = 0; // count: 0 ->calculatePage
+      counterForByte = 0; // count: 0 ->528
+      counterFor1bffer = 0;
 #endif
-      /*#ifdef IMAGE_PROCESS
-      //if (counterOfFile > 54)
-      if (counterOfFile > 62) // 54 byte header + 8 byte color
-      {
-
-        dataIn[counterForPC++] = c;
-        if (counterForPC > 23) // counter 8 byte
-        {
-          if (counterRef < (WIDTH * (HEIGHT / 8)))
-          {
-            dataReturn = DataConvert();
-            //#ifdef DEMO
-            //#else
-            //                        logo_bmp[counterdataProcess] = dataReturn;
-            //#endif
-            counterdataProcess++;
-          }
-          counterRef++;
-          counterForPC = 0;
-        }
-
-        
-      }
-#endif*/
       if (counterOfFile % 2000 == 0)
       {
         Serial.print(F("."));
@@ -1283,11 +1228,67 @@ void processGetData()
   Serial.println(counterOfFile);
   Serial.print(F("counterRef: "));
   Serial.println(counterRef);
+  counterOfFile =0;
+  counterRef=0;
 #endif
 #ifdef USE_FLASH
   Serial.print(F("counterForByte: "));
   Serial.println(counterForByte);
+  counterForByte=0;
 #endif
+}*/
+void processGetData()
+{
+downloadStatus = false;
+    Serial.println(F("Reading"));
+    counterdataProcess = 62;
+    counterOfFile=0;
+    counterRef=0;
+    while (dclient.connected())
+    {
+        while (dclient.available())
+        {
+            char c = dclient.read();
+            counterOfFile++;
+            //if (counterOfFile > 54)
+            if (counterOfFile > 62) // 54 byte header + 8 byte color
+            {
+                dataIn[counterForPC++] = c;
+                if (counterForPC > 23) // counter 8 byte
+                {
+                    if (counterRef < (WIDTH * (HEIGHT / 8)))
+                    {
+                        dataReturn = DataConvert();
+
+                        sourceBuf[counterdataProcess] = dataReturn;
+
+                        counterdataProcess++;
+                    }
+                    else
+                    {
+                      counterOfFile=0;
+                      counterRef=0;
+                      dclient.stop();
+                    }
+                    
+                    counterRef++;
+                    counterForPC = 0;
+                }
+                if (counterOfFile % 2000 == 0)
+                {
+                    Serial.print(".");
+                }
+            }
+        }
+    downloadStatus = true;
+    }
+    Serial.println("done.");
+    Serial.print("counterOfFile: ");
+    Serial.println(counterOfFile);
+    Serial.print("counterRef: ");
+    Serial.println(counterRef);
+    counterOfFile=0;
+    counterRef=0;
 }
 #endif
 int freeMemory() {
