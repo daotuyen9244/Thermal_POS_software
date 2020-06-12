@@ -6,7 +6,6 @@ void setup()
   Serial.begin(115200);
   initEthernet();
 }
-
 void loop()
 {
   // put your main code here, to run repeatedly:
@@ -15,7 +14,7 @@ void loop()
   myusb.Task();
   if ((inChar >= '0') && (inChar <= '9'))
   {
-    for (byte i = 0; i < 10; i++)
+    for (byte i = 0; i < CPRINT; i++)
     {
       Serial.print(" moi vua nhap vao: ");
       Serial.println(inChar);
@@ -32,5 +31,6 @@ void loop()
         Serial.println(F("FTP FAIL"));
       }
     }
+    printer.printEndfile();
   }
 }

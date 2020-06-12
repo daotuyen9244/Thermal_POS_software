@@ -1,3 +1,0 @@
-[submodule "test"]
-	path = test/arduino-tests
-	url = git://github.com/BlockoS/arduino-tests.git

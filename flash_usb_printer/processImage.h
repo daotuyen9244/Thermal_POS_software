@@ -1,12 +1,12 @@
 #define WIDTH 384
 #define HEIGHT 40
 #define byte_per_page 528
-#define CPRINT 1
+#define CPRINT 10
 
 #include "M0USBPrinter.h"
 #include "M0_POS_Printer.h"
 #include <SPI.h>
-#include <Ethernet2.h>
+#include <Ethernet.h>
 /// USB printer
 class PrinterOper : public USBPrinterAsyncOper
 {
@@ -29,12 +29,9 @@ bool downloadStatus = false;
 //encode bmp
 unsigned char dataIn[24];
 unsigned char dataReturn = 0;
-unsigned int width;
-unsigned int height;
-unsigned int row_width;
 //unsigned char color_table[8] = {0, 0, 0, 0, 255, 255, 255, 0};
-uint8_t sourcePrint[((HEIGHT / 8) / CPRINT) * WIDTH]; // Imge = ucBuf *CPRINT ===> ex: img size 192x128 ==> (print img size 192x1 )* 16
-uint8_t sourceBuf[((HEIGHT / 8) / CPRINT) * WIDTH + 62];
+uint8_t sourcePrint[((HEIGHT / 8)) * WIDTH]; // Imge = ucBuf *CPRINT ===> ex: img size 192x128 ==> (print img size 192x1 )* 16
+uint8_t sourceBuf[((HEIGHT / 8)) * WIDTH + 62];
 ///////////////
 static int tp_wrap, bb_pitch;
 static int bb_width, bb_height; // back buffer width and height in pixels
@@ -45,7 +42,7 @@ int counterdataProcess = 0;
 long counterOfFile = 0;
 byte counterForPC = 0;
 long counterRef = 0;
-
+long maxLength24bbp = WIDTH * HEIGHT * 3 + 54; // 54 byte header + 3(RGB)*WIDTH*HEIGHT
 #define Pin_rst 5
 // this must be unique
 byte mac[] = {0x90, 0xA2, 0xDA, 0x00, 0x59, 0x67};
@@ -334,32 +331,29 @@ byte doFTP(String fileName)
     client.stop();
     return 0;
   }
-  for (byte i = 0; i < 9; i++)
+  client.print(F("RETR "));
+  client.println(fileName);
+  if (!eRcv())
   {
-    client.print(F("RETR "));
-    client.println(fileName);
-    if (!eRcv())
-    {
-      dclient.stop();
-      return 0;
-    }
-    processGetData();
-    dclient.println();
     dclient.stop();
-    makingMiniPicture(sourceBuf, WIDTH, HEIGHT); // making header file for 1bbp bitmap
-    tpSetBackBuffer(sourcePrint, WIDTH, HEIGHT);
-    tpFill(0);
-    ImgLoadStatus = tpLoadBMP(sourceBuf, 1, 0, 0);
-    if (ImgLoadStatus != 0)
-    {
-      Serial.println(F("tpLoadBMP error!"));
-    }
-    else
-    {
-      Serial.println(F("tpLoadBMP OK!"));
-      downloadStatus = true; // step 4
-      printPicture();
-    }
+    return 0;
+  }
+  processGetData();
+  dclient.println();
+  dclient.stop();
+  makingMiniPicture(sourceBuf, WIDTH, HEIGHT); // making header file for 1bbp bitmap
+  tpSetBackBuffer(sourcePrint, WIDTH, HEIGHT);
+  tpFill(0);
+  ImgLoadStatus = tpLoadBMP(sourceBuf, 1, 0, 0);
+  if (ImgLoadStatus != 0)
+  {
+    Serial.println(F("tpLoadBMP error!"));
+  }
+  else
+  {
+    Serial.println(F("tpLoadBMP OK!"));
+    downloadStatus = true; // step 4
+    printPicture();
   }
   Serial.println(F("Data disconnected"));
   if (!eRcv())
@@ -427,31 +421,38 @@ void processGetData()
     {
       char c = dclient.read();
       counterOfFile++;
-      //if (counterOfFile > 54)
-      if (counterOfFile > 62) // 54 byte header + 8 byte color
+      if (counterOfFile <= maxLength24bbp)
       {
-        dataIn[counterForPC++] = c;
-        if (counterForPC > 23) // counter 8 byte
+        if (counterOfFile > 54)
+        //if (counterOfFile > 62) // 54 byte header + 8 byte color
         {
-          if (counterRef < (WIDTH * (HEIGHT / 8)))
+          dataIn[counterForPC++] = c;
+          if (counterForPC > 23) // counter 8 byte
           {
-            dataReturn = DataConvert();
-            sourceBuf[counterdataProcess] = dataReturn;
-            counterdataProcess++;
+            if (counterRef < (WIDTH * (HEIGHT / 8)))
+            {
+              dataReturn = DataConvert();
+              sourceBuf[counterdataProcess] = dataReturn;
+              counterdataProcess++;
+            }
+            else
+            {
+              counterOfFile = 0;
+              counterRef = 0;
+              dclient.stop();
+            }
+            counterRef++;
+            counterForPC = 0;
           }
-          else
+          if (counterOfFile % 2000 == 0)
           {
-            counterOfFile = 0;
-            counterRef = 0;
-            dclient.stop();
+            Serial.print(".");
           }
-          counterRef++;
-          counterForPC = 0;
         }
-        if (counterOfFile % 2000 == 0)
-        {
-          Serial.print(".");
-        }
+      }
+      else
+      {
+        dclient.stop();
       }
     }
     downloadStatus = true;
