@@ -5,7 +5,7 @@ extern "C" char* sbrk(int incr);
 extern char *__brkval;
 #endif  // __arm__
 
-
+#define USE_DEMO
 #define USE_DEBUG
 #define USE_PRINTER // USE USB printer driver
 #define USE_FLASH
@@ -66,6 +66,7 @@ bool downloadStatus = false;
 #endif
 // End printer
 #ifdef IMAGE_PROCESS
+#ifdef USE_DEMO
 /////// process image
 /*const byte logo_bmp[] = {
     0x42, 0x4D, 0xEF, 0xFE, 0x3E, 0x60, 0x00, 0x00, 0x00, 0x00, 0x3E, 0x00, 0x00, 0x00, 0x28, 0x00, 0x00, 0x00, 0xC0,
@@ -381,7 +382,9 @@ const byte logo_bmp[] = {
 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x00,0x00,0x00
 };
 */
+
 //256x20
+
 byte logo_bmp[] = {
   0x42,0x4D,0xCC,0xCC,0x3E,0x18,0x00,0x00,0x00,0x00,0x3E,0x00,
 0x00,0x00,0x28,0x00,0x00,0x00,0x00,0x01,0x00,0x00,0x18,0x00,
@@ -453,6 +456,7 @@ byte logo_bmp[] = {
 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
 0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
 0xFF,0xFF};
+#endif
 //encode bmp
 unsigned char dataIn[24];
 unsigned char dataReturn = 0;
@@ -605,6 +609,7 @@ void initFlash()
   Serial.print(F(" ,location2:"));
   Serial.println(location2);
 }
+#ifdef USE_DEMO
 void WriteDataToFlash() // fill and read 1 byte
 {
   byte _data = 0;
@@ -624,12 +629,36 @@ void WriteDataToFlash() // fill and read 1 byte
       }
       dataflash.bufferToPage(0, i); //buffer --> page
     }
+    counterForPage++;
   }
   Serial.print(F("counterForByte: "));
   Serial.print(counterForByte);
   Serial.print(F("\t"));
   Serial.print(F("counterForPage: "));
   Serial.println(counterForPage);
+}
+#endif
+void ClearDataFlash() // fill and read 1 byte
+{
+  byte _data = 0xff;
+  counterForByte = 0;
+  counterForPage = 0;
+  for (byte i = 0; i < calculatePage24bbp; i++)
+  {
+    if (counterForByte < calculateSize24bbp)
+    {
+      dataflash.bufferWrite(0, 0); // buferr 0 --> offset 0
+      for (int k = 0; k < byte_per_page; k++)
+      {
+        dataflash.Stransfer(_data);
+        counterForByte++;
+      }
+      dataflash.bufferToPage(0, i); //buffer --> page
+    }
+  }
+  Serial.println("Clear Data Flash Done");
+  counterForByte = 0;
+  counterForPage = 0;
 }
 void setBufferWriteToFlash()
 {
@@ -987,17 +1016,6 @@ void converTo1BBp()
             counterForPC = 0;
           }
         }
-        /*if (_data != logo_bmp[byte_per_page * i + k])
-        {
-          comp = 1;
-        }
-        Serial.print("counterForByte: ");
-        Serial.print(counterForByte);
-        Serial.print("\t");
-        Serial.print(_data);
-        Serial.print("\t");
-        Serial.println(logo_bmp[counterForByte]);*/
-
         counterForByte++;
       }
     }
@@ -1024,6 +1042,7 @@ void converTo1BBp()
     
     Serial.print(sourceBuf[i],HEX);
     Serial.print(F(","));
+    #ifdef USE_DEMO
     if(sourceBuf[i]!= logo_bmp[i])
     {
 
@@ -1036,6 +1055,7 @@ void converTo1BBp()
       Serial.println(logo_bmp[i]);
 
     }
+    #endif
     _counter++;
     if(_counter > 11 )
     {

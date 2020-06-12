@@ -36,18 +36,22 @@ void loop()
       getFreeRAM();
   }
 #endif
+#ifdef USE_DEMO
   if (inChar == 'f')
   {
     Serial.println(F(">>>>>>>>>>>>>READ FLS >>>>>>>>>>>>"));
-    ReadDataFromFlash(24);
+    ReadDataFromFlash(1);
     getFreeRAM();
   }
+  
   if (inChar == 's')
   {
-    getFreeRAM();
     WriteDataToFlash();
-ReadDataFromFlash(24);
-  getFreeRAM();
+  }
+  #endif
+  if (inChar == 'q') /// clear data into flash
+  {
+    ClearDataFlash();
   }
   if (inChar == 'l')
   {
