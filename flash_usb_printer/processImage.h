@@ -2,11 +2,11 @@
 #define HEIGHT 40
 #define byte_per_page 528
 #define CPRINT 10
-
+#define filter 200
 #include "M0USBPrinter.h"
 #include "M0_POS_Printer.h"
 #include <SPI.h>
-#include <Ethernet.h>
+#include <Ethernet2.h>
 /// USB printer
 class PrinterOper : public USBPrinterAsyncOper
 {
@@ -183,64 +183,144 @@ unsigned char DataConvert()
   B = dataIn[0];
   G = dataIn[1];
   R = dataIn[2];
-  gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
-  gray = (unsigned char)(gray >> 7 << 7);
+  if((B>filter)||(G>filter)&&(R>filter))
+  {
+    gray =1;
+  }
+  else
+  {
+    gray=0;
+  }
+  
+  //gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
+  //gray = (unsigned char)(gray >> 7 << 7);
+  gray = (unsigned char)(gray << 7);
   dt = dt | gray;
 
   //bit 2
   B = dataIn[3];
   G = dataIn[4];
   R = dataIn[5];
-  gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
-  gray = (unsigned char)(gray >> 7 << 6);
+  //gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
+  //gray = (unsigned char)(gray >> 7 << 6);
+  
+  if((B>filter)||(G>filter)&&(R>filter))
+  {
+    gray =1;
+  }
+  else
+  {
+    gray=0;
+  }
+  gray = (unsigned char)(gray << 6);
   dt = dt | gray;
 
   //bit 3
   B = dataIn[6];
   G = dataIn[7];
   R = dataIn[8];
-  gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
-  gray = (unsigned char)(gray >> 7 << 5);
+  //gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
+  //gray = (unsigned char)(gray >> 7 << 5);
+  
+  if((B>filter)||(G>filter)&&(R>filter))
+  {
+    gray =1;
+  }
+  else
+  {
+    gray=0;
+  }
+  gray = (unsigned char)(gray << 5);
   dt = dt | gray;
 
   //bit 4
   B = dataIn[9];
   G = dataIn[10];
   R = dataIn[11];
-  gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
-  gray = (unsigned char)(gray >> 7 << 4);
+  //gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
+  //gray = (unsigned char)(gray >> 7 << 4);
+  
+  if((B>filter)||(G>filter)&&(R>filter))
+  {
+    gray =1;
+  }
+  else
+  {
+    gray=0;
+  }
+  gray = (unsigned char)(gray << 4);
   dt = dt | gray;
 
   //bit 5
   B = dataIn[12];
   G = dataIn[13];
   R = dataIn[14];
-  gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
-  gray = (unsigned char)(gray >> 7 << 3);
+  //gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
+  //gray = (unsigned char)(gray >> 7 << 3);
+  
+  if((B>filter)||(G>filter)&&(R>filter))
+  {
+    gray =1;
+  }
+  else
+  {
+    gray=0;
+  }
+  gray = (unsigned char)(gray << 3);
   dt = dt | gray;
 
   //bit 6
   B = dataIn[15];
   G = dataIn[16];
   R = dataIn[17];
-  gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
-  gray = (unsigned char)(gray >> 7 << 2);
+  //gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
+  //gray = (unsigned char)(gray >> 7 << 2);
+  
+  if((B>filter)||(G>filter)&&(R>filter))
+  {
+    gray =1;
+  }
+  else
+  {
+    gray=0;
+  }
+  gray = (unsigned char)(gray << 2);
   dt = dt | gray;
 
   //bit 7
   B = dataIn[18];
   G = dataIn[19];
   R = dataIn[20];
-  gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
-  gray = (unsigned char)(gray >> 7 << 1);
+  //gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
+  //gray = (unsigned char)(gray >> 7 << 1);
+  
+  if((B>filter)||(G>filter)&&(R>filter))
+  {
+    gray =1;
+  }
+  else
+  {
+    gray=0;
+  }
+  gray = (unsigned char)(gray << 1);
   dt = dt | gray;
 
   //bit 8
   B = dataIn[21];
   G = dataIn[22];
   R = dataIn[23];
-  gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
-  gray = (unsigned char)(gray >> 7);
+  //gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
+  //gray = (unsigned char)(gray >> 7);
+  
+  if((B>filter)||(G>filter)&&(R>filter))
+  {
+    gray =1;
+  }
+  else
+  {
+    gray=0;
+  }
+  gray =gray &0x01;
   dt = dt | gray;
   return dt;
 }
