@@ -6,7 +6,8 @@
 #include "M0USBPrinter.h"
 #include "M0_POS_Printer.h"
 #include <SPI.h>
-#include <Ethernet2.h>
+#include <Ethernet.h>
+#include <SD.h>
 /// USB printer
 class PrinterOper : public USBPrinterAsyncOper
 {
@@ -32,6 +33,7 @@ unsigned char dataReturn = 0;
 //unsigned char color_table[8] = {0, 0, 0, 0, 255, 255, 255, 0};
 uint8_t sourcePrint[((HEIGHT / 8)) * WIDTH]; // Imge = ucBuf *CPRINT ===> ex: img size 192x128 ==> (print img size 192x1 )* 16
 uint8_t sourceBuf[((HEIGHT / 8)) * WIDTH + 62];
+uint8_t header24bpp[54];
 ///////////////
 static int tp_wrap, bb_pitch;
 static int bb_width, bb_height; // back buffer width and height in pixels
@@ -42,7 +44,8 @@ int counterdataProcess = 0;
 long counterOfFile = 0;
 byte counterForPC = 0;
 long counterRef = 0;
-long maxLength24bbp = WIDTH * HEIGHT * 3 + 54; // 54 byte header + 3(RGB)*WIDTH*HEIGHT
+long maxLength24bbp = 0; // 54 byte header + 3(RGB)*WIDTH*HEIGHT
+bool ftpStatus=false;
 #define Pin_rst 5
 // this must be unique
 byte mac[] = {0x90, 0xA2, 0xDA, 0x00, 0x59, 0x67};
@@ -64,6 +67,10 @@ String fileName = "";
 //Key variable
 char outBuf[128];
 char outCount;
+
+//////////
+
+File myFile;
 ////////////////
 byte doFTP(String fileName);
 byte eRcv();
@@ -75,7 +82,6 @@ void printPicture()
   if (downloadStatus)
   {
     // Make sure USB printer found and ready
-    Serial.println(F("printer begin>>>>>>>>>>>>>>>"));
     if (uprinter.isReady())
     {
       printer.begin();
@@ -165,8 +171,6 @@ void tpSetBackBuffer(uint8_t *pBuffer, int iWidth, int iHeight)
   bb_width = iWidth;
   bb_height = iHeight;
   bb_pitch = (iWidth + 7) >> 3;
-  Serial.print(F("bb_pitch: "));
-  Serial.println(bb_pitch);
 } /* tpSetBackBuffer() */
 void tpFill(unsigned char ucData)
 {
@@ -183,15 +187,15 @@ unsigned char DataConvert()
   B = dataIn[0];
   G = dataIn[1];
   R = dataIn[2];
-  if((B>filter)||(G>filter)&&(R>filter))
+  if ((B > filter) || (G > filter) && (R > filter))
   {
-    gray =1;
+    gray = 1;
   }
   else
   {
-    gray=0;
+    gray = 0;
   }
-  
+
   //gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
   //gray = (unsigned char)(gray >> 7 << 7);
   gray = (unsigned char)(gray << 7);
@@ -203,14 +207,14 @@ unsigned char DataConvert()
   R = dataIn[5];
   //gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
   //gray = (unsigned char)(gray >> 7 << 6);
-  
-  if((B>filter)||(G>filter)&&(R>filter))
+
+  if ((B > filter) || (G > filter) && (R > filter))
   {
-    gray =1;
+    gray = 1;
   }
   else
   {
-    gray=0;
+    gray = 0;
   }
   gray = (unsigned char)(gray << 6);
   dt = dt | gray;
@@ -221,14 +225,14 @@ unsigned char DataConvert()
   R = dataIn[8];
   //gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
   //gray = (unsigned char)(gray >> 7 << 5);
-  
-  if((B>filter)||(G>filter)&&(R>filter))
+
+  if ((B > filter) || (G > filter) && (R > filter))
   {
-    gray =1;
+    gray = 1;
   }
   else
   {
-    gray=0;
+    gray = 0;
   }
   gray = (unsigned char)(gray << 5);
   dt = dt | gray;
@@ -239,14 +243,14 @@ unsigned char DataConvert()
   R = dataIn[11];
   //gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
   //gray = (unsigned char)(gray >> 7 << 4);
-  
-  if((B>filter)||(G>filter)&&(R>filter))
+
+  if ((B > filter) || (G > filter) && (R > filter))
   {
-    gray =1;
+    gray = 1;
   }
   else
   {
-    gray=0;
+    gray = 0;
   }
   gray = (unsigned char)(gray << 4);
   dt = dt | gray;
@@ -257,14 +261,14 @@ unsigned char DataConvert()
   R = dataIn[14];
   //gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
   //gray = (unsigned char)(gray >> 7 << 3);
-  
-  if((B>filter)||(G>filter)&&(R>filter))
+
+  if ((B > filter) || (G > filter) && (R > filter))
   {
-    gray =1;
+    gray = 1;
   }
   else
   {
-    gray=0;
+    gray = 0;
   }
   gray = (unsigned char)(gray << 3);
   dt = dt | gray;
@@ -275,14 +279,14 @@ unsigned char DataConvert()
   R = dataIn[17];
   //gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
   //gray = (unsigned char)(gray >> 7 << 2);
-  
-  if((B>filter)||(G>filter)&&(R>filter))
+
+  if ((B > filter) || (G > filter) && (R > filter))
   {
-    gray =1;
+    gray = 1;
   }
   else
   {
-    gray=0;
+    gray = 0;
   }
   gray = (unsigned char)(gray << 2);
   dt = dt | gray;
@@ -293,14 +297,14 @@ unsigned char DataConvert()
   R = dataIn[20];
   //gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
   //gray = (unsigned char)(gray >> 7 << 1);
-  
-  if((B>filter)||(G>filter)&&(R>filter))
+
+  if ((B > filter) || (G > filter) && (R > filter))
   {
-    gray =1;
+    gray = 1;
   }
   else
   {
-    gray=0;
+    gray = 0;
   }
   gray = (unsigned char)(gray << 1);
   dt = dt | gray;
@@ -311,16 +315,16 @@ unsigned char DataConvert()
   R = dataIn[23];
   //gray = (unsigned char)(0.11f * B + 0.59 * G + 0.3f * R);
   //gray = (unsigned char)(gray >> 7);
-  
-  if((B>filter)||(G>filter)&&(R>filter))
+
+  if ((B > filter) || (G > filter) && (R > filter))
   {
-    gray =1;
+    gray = 1;
   }
   else
   {
-    gray=0;
+    gray = 0;
   }
-  gray =gray &0x01;
+  gray = gray & 0x01;
   dt = dt | gray;
   return dt;
 }
@@ -421,20 +425,6 @@ byte doFTP(String fileName)
   processGetData();
   dclient.println();
   dclient.stop();
-  makingMiniPicture(sourceBuf, WIDTH, HEIGHT); // making header file for 1bbp bitmap
-  tpSetBackBuffer(sourcePrint, WIDTH, HEIGHT);
-  tpFill(0);
-  ImgLoadStatus = tpLoadBMP(sourceBuf, 1, 0, 0);
-  if (ImgLoadStatus != 0)
-  {
-    Serial.println(F("tpLoadBMP error!"));
-  }
-  else
-  {
-    Serial.println(F("tpLoadBMP OK!"));
-    downloadStatus = true; // step 4
-    printPicture();
-  }
   Serial.println(F("Data disconnected"));
   if (!eRcv())
     return 0;
@@ -490,58 +480,118 @@ void efail()
 }
 void processGetData()
 {
+  ftpStatus=false;
   downloadStatus = false;
   Serial.println(F("Reading"));
   counterdataProcess = 62;
   counterOfFile = 0;
   counterRef = 0;
+  byte _readHeader = 0;
+  long h = 0, _internalCounter = 0, _limit = 0, _calculteCounter = 0, sl = 0;
+  String _name = "";
   while (dclient.connected())
   {
     while (dclient.available())
     {
-      char c = dclient.read();
-      counterOfFile++;
-      if (counterOfFile <= maxLength24bbp)
+      if (_readHeader == 0)
       {
-        if (counterOfFile > 54)
-        //if (counterOfFile > 62) // 54 byte header + 8 byte color
+        if (counterOfFile < 54)
         {
-          dataIn[counterForPC++] = c;
-          if (counterForPC > 23) // counter 8 byte
+          header24bpp[counterOfFile++] = dclient.read();
+        }
+        else
+        {
+          h = header24bpp[25] << 24 | header24bpp[24] << 16 | header24bpp[23] << 8 | header24bpp[22];
+          _limit = 384 * 40 * 3; //size: 384x40 24bbp
+          _calculteCounter = h / 40;
+          if ((h % 40) == 0)
           {
-            if (counterRef < (WIDTH * (HEIGHT / 8)))
-            {
-              dataReturn = DataConvert();
-              sourceBuf[counterdataProcess] = dataReturn;
-              counterdataProcess++;
-            }
-            else
-            {
-              counterOfFile = 0;
-              counterRef = 0;
-              dclient.stop();
-            }
-            counterRef++;
-            counterForPC = 0;
+            _calculteCounter = h / 40;
           }
-          if (counterOfFile % 2000 == 0)
+          else
           {
-            Serial.print(".");
+            _calculteCounter = h / 40 + 1;
           }
+          maxLength24bbp = 384 * _calculteCounter * 40 * 3;
+          counterOfFile = 0;
+          _readHeader = 1;
         }
       }
-      else
+      else if (_readHeader == 1)
       {
+        for (byte i = 0; i < _calculteCounter; i++)
+        {
+          counterdataProcess = 62;
+          for (int j = 0; j < 384; j++)
+          {
+            for (int k = 0; k < 5; k++)
+            {
+              for (byte m = 0; m < 24; m++)
+              {
+                dataIn[m] = dclient.read();
+              }
+              dataReturn = DataConvert();
+              sourceBuf[counterdataProcess++] = dataReturn;
+            }
+            
+          }
+          makingMiniPicture(sourceBuf, WIDTH, HEIGHT);
+          _name = "test" + String(_calculteCounter - i) + ".bmp";
+          myFile = SD.open(_name, FILE_WRITE);
+          // if the file opened okay, write to it:
+          if (myFile)
+          {
+            Serial.print("Writing to ");
+            Serial.print(_name);
+            for (long _i = 0; _i < ((HEIGHT / 8) * WIDTH + 62); _i++)
+            {
+              myFile.write(sourceBuf[_i]);
+            }
+            myFile.close();
+            Serial.println(".....done.");
+          }
+        }
         dclient.stop();
       }
     }
-    downloadStatus = true;
   }
-  Serial.println("done.");
-  Serial.print("counterOfFile: ");
-  Serial.println(counterOfFile);
-  Serial.print("counterRef: ");
-  Serial.println(counterRef);
+  for (byte i = 0; i <= _calculteCounter; i++)
+  {
+    _name = "test" + String(i) + ".bmp";
+    Serial.print("Print file: ");
+    myFile = SD.open(_name, FILE_READ);
+    if (myFile)
+    {
+      Serial.println(_name);
+
+      // read from the file until there's nothing else in it:
+      while (myFile.available())
+      {
+        for (long _i = 0; _i < ((HEIGHT / 8) * WIDTH + 62); _i++)
+        {
+          sourceBuf[_i] = myFile.read();
+        }
+      }
+      // close the file:
+      myFile.close();
+    }
+    //makingMiniPicture(sourceBuf, WIDTH, HEIGHT); // making header file for 1bbp bitmap
+    tpSetBackBuffer(sourcePrint, WIDTH, HEIGHT);
+    tpFill(0);
+    ImgLoadStatus = tpLoadBMP(sourceBuf, 1, 0, 0);
+    if (ImgLoadStatus != 0)
+    {
+      Serial.println(F("tpLoadBMP error!"));
+    }
+    else
+    {
+      Serial.println(F("tpLoadBMP OK!"));
+      downloadStatus = true; // step 4
+      printPicture();
+    }
+    SD.remove(_name);
+  }
+  printer.printEndfile();
   counterOfFile = 0;
-  counterRef = 0;
+  ftpStatus=true;
 }

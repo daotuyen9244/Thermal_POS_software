@@ -4,8 +4,13 @@ void setup()
 {
   /* Set baud rate for serial communication */
   Serial.begin(115200);
+  if (!SD.begin(4)) {
+    Serial.println("initialization failed!");
+  }
+  Serial.println("initialization done.");
+  
   initEthernet();
-}
+ } 
 void loop()
 {
   // put your main code here, to run repeatedly:
@@ -14,15 +19,9 @@ void loop()
   myusb.Task();
   if ((inChar >= '0') && (inChar <= '9'))
   {
-    for (byte i = 0; i < CPRINT; i++)
-    {
-      Serial.print(" moi vua nhap vao: ");
-      Serial.println(inChar);
-      fileName = String(i) + ".bmp";
-      Serial.print("fileName: ");
-      Serial.println(fileName);
-      Serial.println(F(">>>>>>>>>>>>>READ FTP >>>>>>>>>>>>"));
-      if (doFTP(fileName)) // step 1
+    fileName = "source.bmp";
+    doFTP(fileName);
+    if (ftpStatus) // step 1
       {
         Serial.println(F("FTP OK"));
       }
@@ -30,7 +29,5 @@ void loop()
       {
         Serial.println(F("FTP FAIL"));
       }
-    }
-    printer.printEndfile();
   }
 }
